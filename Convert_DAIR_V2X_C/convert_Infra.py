@@ -121,11 +121,18 @@ def main(source_root_dir, output_root_dir):
     for info in data_info:
         image_path = os.path.join(image_dir, info["image_path"].split("/")[-1])
         pointcloud_path = os.path.join(lidar_dir, info["pointcloud_path"].split("/")[-1])
-        
+        pointcloud_idx = f"{(int(pointcloud_path[-10:-4]) - 2):06d}"
+        pointcloud_path = f"{pointcloud_path[:-10]}{pointcloud_idx}.pcd"
+                
         intrinsic_path = os.path.join(label_dir, info["calib_camera_intrinsic_path"])
         extrinsic_path = os.path.join(label_dir, info["calib_virtuallidar_to_camera_path"])
         lidar_label_path = os.path.join(label_dir, info["label_lidar_std_path"])
+        lidar_idx = f"{(int(lidar_label_path[-11:-5]) - 2):06d}"
+        lidar_label_path = f"{lidar_label_path[:-11]}{lidar_idx}.json"
         camera_label_path = os.path.join(label_dir, info["label_camera_std_path"])
+        
+        if not os.path.exists(image_path) or not os.path.exists(pointcloud_path) or not os.path.exists(intrinsic_path) or not os.path.exists(extrinsic_path) or not os.path.exists(lidar_label_path) or not os.path.exists(camera_label_path):
+            continue
         
         intersection_loc = info["intersection_loc"]
         batch_start_idx = info["batch_start_id"]
@@ -179,7 +186,8 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
     pointcloud = o3d.io.read_point_cloud(pointcloud_path)
     pointcloud = np.asarray(pointcloud.points)
     pointcloud = pointcloud.astype(np.float32)
-    pointcloud.tofile(os.path.join(output_path, "LiDAR/LiDAR", sub_dir_name, f"{pointcloud_path[-10:-4]}.bin"))
+    pointcloud_shifted = f"{(int(pointcloud_path[-10:-4]) + 2):06d}"
+    pointcloud.tofile(os.path.join(output_path, "LiDAR/LiDAR", sub_dir_name, f"{pointcloud_shifted}.bin"))
     
     # camera label json dict
     camera_label_dict = {}
@@ -189,26 +197,80 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
     camera_label_dict['intrinsic']['cx'] = np.array(intrinsic["cam_K"]).reshape(3, 3)[0, 2]
     camera_label_dict['intrinsic']['cy'] = np.array(intrinsic["cam_K"]).reshape(3, 3)[1, 2]
     
-    ext_rotation = np.array(extrinsic["rotation"]).reshape(3, 3)
-    ext_translation = np.array(extrinsic["translation"])
-    
-    # rotation to quaternion
-    r = R.from_matrix(ext_rotation)
-    ext_quaternion = r.as_quat()
-    qx, qy, qz, qw = ext_quaternion
+    ext_rotation = np.array(extrinsic["rotation"], dtype=np.float32).reshape(3, 3)
+    ext_translation = np.array(extrinsic["translation"], dtype=np.float32).reshape(3, 1)
+    ext_L2C = np.hstack([ext_rotation, ext_translation.reshape(3, 1)])
+    ext_L2C = np.vstack([ext_L2C, np.array([0, 0, 0, 1])])
     
     camera_label_dict['extrinsic'] = {}
-    camera_label_dict['extrinsic']['rotation'] = {}
-    camera_label_dict['extrinsic']['rotation']['x'] = qx
-    camera_label_dict['extrinsic']['rotation']['y'] = qy
-    camera_label_dict['extrinsic']['rotation']['z'] = qz
-    camera_label_dict['extrinsic']['rotation']['w'] = qw
+    camera_label_dict['extrinsic']['rotation'] = ext_rotation.reshape(-1).tolist()
     camera_label_dict['extrinsic']['translation'] = {}
     camera_label_dict['extrinsic']['translation']['x'] = float(ext_translation[0, 0])
     camera_label_dict['extrinsic']['translation']['y'] = float(ext_translation[1, 0])
     camera_label_dict['extrinsic']['translation']['z'] = float(ext_translation[2, 0])
     
     camera_label_dict['objects'] = []
+    for obj in lidar_label:
+        obj_dict = {}
+        obj_dict['class'] = obj['type']
+        
+        # LiDAR 3D Label is shifted by 2 frames
+        # So, 2D label is 2 frames ahead of 3D label
+        # in this time, we can't find corresponding 2D label for 3D label
+        
+        # if '2d_box' in obj:
+        #     obj_dict['box2d'] = {}
+        #     xmin, ymin, xmax, ymax = obj['2d_box']['xmin'], obj['2d_box']['ymin'], obj['2d_box']['xmax'], obj['2d_box']['ymax']
+        #     xmin = xmin / imw
+        #     xmax = xmax / imw
+        #     ymin = ymin / imh
+        #     ymax = ymax / imh
+            
+        #     cx = (xmin + xmax) / 2
+        #     cy = (ymin + ymax) / 2
+        #     w = xmax - xmin
+        #     h = ymax - ymin
+            
+        #     obj_dict['box2d']['cx'] = cx
+        #     obj_dict['box2d']['cy'] = cy
+        #     obj_dict['box2d']['w'] = w
+        #     obj_dict['box2d']['h'] = h
+            
+        if '3d_dimensions' in obj and '3d_location' in obj:
+            obj_dict['box3d'] = {}
+            obj_dict['box3d']['size'] = {}
+            obj_dict['box3d']['size']['width'] = obj['3d_dimensions']['h']
+            obj_dict['box3d']['size']['length'] = obj['3d_dimensions']['l']
+            obj_dict['box3d']['size']['height'] = obj['3d_dimensions']['w']
+            
+            rot_3d = obj['rotation']
+            # rotation to quaternion
+            obj_rotation = np.array([
+                [np.cos(rot_3d), -np.sin(rot_3d), 0],
+                [np.sin(rot_3d), np.cos(rot_3d), 0],
+                [0, 0, 1]
+            ])
+            
+            obj_tx, obj_ty, obj_tz = obj['3d_location']['x'], obj['3d_location']['y'], obj['3d_location']['z']
+            
+            ext_obj = np.hstack([obj_rotation, np.array([[obj_tx], [obj_ty], [obj_tz]])])
+            ext_obj = np.vstack([ext_obj, np.array([0, 0, 0, 1])])
+            
+            ext = ext_L2C @ ext_obj
+            
+            tx = ext[0, 3]
+            ty = ext[1, 3]
+            tz = ext[2, 3]
+            
+            obj_dict['box3d']['rotation'] = ext[:3, :3].reshape(-1).tolist()
+            
+            obj_dict['box3d']['translation'] = {}
+            obj_dict['box3d']['translation']['x'] = tx
+            obj_dict['box3d']['translation']['y'] = ty
+            obj_dict['box3d']['translation']['z'] = tz
+        
+        camera_label_dict['objects'].append(obj_dict)
+        
     for obj in camera_label:
         obj_dict = {}
         obj_dict['class'] = obj['type']
@@ -230,32 +292,6 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
             obj_dict['box2d']['cy'] = cy
             obj_dict['box2d']['w'] = w
             obj_dict['box2d']['h'] = h
-            
-        if '3d_dimensions' in obj and '3d_location' in obj:
-            obj_dict['box3d'] = {}
-            obj_dict['box3d']['size'] = {}
-            obj_dict['box3d']['size']['width'] = obj['3d_dimensions']['w']
-            obj_dict['box3d']['size']['length'] = obj['3d_dimensions']['l']
-            obj_dict['box3d']['size']['height'] = obj['3d_dimensions']['h']
-            
-            obj_dict['box3d']['translation'] = {}
-            obj_dict['box3d']['translation']['x'] = obj['3d_location']['x']
-            
-            rot_y = obj['rotation']
-            # rotation to quaternion
-            r = R.from_euler('z', rot_y, degrees=False)
-            obj_quaternion = r.as_quat()
-            obj_qx, obj_qy, obj_qz, obj_qw = obj_quaternion
-            
-            obj_dict['box3d']['rotation'] = {}
-            obj_dict['box3d']['rotation']['x'] = obj_qx
-            obj_dict['box3d']['rotation']['y'] = obj_qy
-            obj_dict['box3d']['rotation']['z'] = obj_qz
-            obj_dict['box3d']['rotation']['w'] = obj_qw
-            
-            obj_dict['box3d']['translation']['x'] = obj['3d_location']['x']
-            obj_dict['box3d']['translation']['y'] = obj['3d_location']['y']
-            obj_dict['box3d']['translation']['z'] = obj['3d_location']['z']
         
         camera_label_dict['objects'].append(obj_dict)
     
