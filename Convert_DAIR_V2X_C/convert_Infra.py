@@ -19,6 +19,8 @@ valid_idx_yizhuang10 = [9, 13]
 valid_idx_yizhuang13 = [0, 2]
 valid_idx_yizhuang16 = [3, 6]
 
+frame_shift = 2
+
 
 def main(source_root_dir, output_root_dir):
     label_dir = os.path.join(source_root_dir, "cooperative-vehicle-infrastructure/cooperative-vehicle-infrastructure/infrastructure-side")
@@ -122,13 +124,13 @@ def main(source_root_dir, output_root_dir):
     for info in data_info:
         image_path = os.path.join(image_dir, info["image_path"].split("/")[-1])
         pointcloud_path = os.path.join(lidar_dir, info["pointcloud_path"].split("/")[-1])
-        pointcloud_idx = f"{(int(pointcloud_path[-10:-4]) - 2):06d}"
+        pointcloud_idx = f"{(int(pointcloud_path[-10:-4]) - frame_shift):06d}"
         pointcloud_path = f"{pointcloud_path[:-10]}{pointcloud_idx}.pcd"
                 
         intrinsic_path = os.path.join(label_dir, info["calib_camera_intrinsic_path"])
         extrinsic_path = os.path.join(label_dir, info["calib_virtuallidar_to_camera_path"])
         lidar_label_path = os.path.join(label_dir, info["label_lidar_std_path"])
-        lidar_idx = f"{(int(lidar_label_path[-11:-5]) - 2):06d}"
+        lidar_idx = f"{(int(lidar_label_path[-11:-5]) - frame_shift):06d}"
         lidar_label_path = f"{lidar_label_path[:-11]}{lidar_idx}.json"
         camera_label_path = os.path.join(label_dir, info["label_camera_std_path"])
         
@@ -161,9 +163,10 @@ def main(source_root_dir, output_root_dir):
             
         parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, camera_label, output_path, sub_dir_name)
         
-        if cnt > 5:
-            break
+        # if cnt > 5:
+        #     break
         cnt += 1
+        print(f"Processing {cnt}th data of {len(data_info)}: {sub_dir_name}")
 
 def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, camera_label, output_path, sub_dir_name):
     if not os.path.exists(os.path.join(output_path, "Camera/Image", sub_dir_name)):
@@ -189,7 +192,7 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
     pointcloud = o3d.io.read_point_cloud(pointcloud_path)
     pointcloud = np.asarray(pointcloud.points)
     pointcloud = pointcloud.astype(np.float32)
-    pointcloud_shifted = f"{(int(pointcloud_path[-10:-4]) + 2):06d}"
+    pointcloud_shifted = f"{(int(pointcloud_path[-10:-4]) + frame_shift):06d}"
     pointcloud.tofile(os.path.join(output_path, "LiDAR/LiDAR", sub_dir_name, f"{pointcloud_shifted}.bin"))
     
     # camera label json dict
@@ -218,8 +221,8 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
         obj_dict = {}
         obj_dict['class'] = obj['type']
         
-        # LiDAR 3D Label is shifted by 2 frames
-        # So, 2D label is 2 frames ahead of 3D label
+        # LiDAR 3D Label is shifted by "frame_shift" frames
+        # So, 2D label is "frame_shift" frames ahead of 3D label
         # in this time, we can't find corresponding 2D label for 3D label
         
         # if '2d_box' in obj:

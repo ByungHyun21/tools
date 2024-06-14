@@ -36,12 +36,20 @@ class MainWindow(QMainWindow):
         
         self.root_path = QDir.rootPath()
         self.index = 0
+        self.itemSelected = False
+        self.isPlay = False
+        self.playtimer = QTimer()
+        self.playtimer.timeout.connect(self.btnNextClicked)
+        
         
     def initUI(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
         self.vlayout = QVBoxLayout(central_widget)
+        
+        self.Lfolder_path = QLabel(" ")
+        self.vlayout.addWidget(self.Lfolder_path)
         
         self.folder_tree = QTreeView()
         self.folder_tree.header().hide()
@@ -64,6 +72,24 @@ class MainWindow(QMainWindow):
         self.btn_next = QPushButton(">")
         self.btn_next.clicked.connect(self.btnNextClicked)
         self.btnlayout.addWidget(self.btn_next)
+        
+        self.Lspeed = QLabel("Play Speed(ms)")
+        self.vlayout.addWidget(self.Lspeed)
+        
+        self.hlayout_speed = QHBoxLayout()
+        
+        self.speed_bar = QSlider(Qt.Horizontal)
+        self.speed_bar.setMinimum(100)
+        self.speed_bar.setMaximum(1000)
+        self.speed_bar.setValue(1000)
+        self.speed_bar.setTickInterval(100)
+        self.speed_bar.setTickPosition(QSlider.TicksBelow)
+        self.speed_bar.valueChanged.connect(self.speedChanged)
+        self.hlayout_speed.addWidget(self.speed_bar)
+        
+        self.speed_label = QLabel("1000")
+        self.hlayout_speed.addWidget(self.speed_label)
+        self.vlayout.addLayout(self.hlayout_speed)
 
     def open_folder(self):
         self.folder_tree_model.clear()
@@ -71,16 +97,14 @@ class MainWindow(QMainWindow):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder", self.root_path)
         if folder_path:
             self.root_path = folder_path
+            self.Lfolder_path.setText(folder_path)
             self.dataloader.setDataset(folder_path)
             
             config = {}
             config['image_exist'] = False
             config['lidar_exist'] = False
             
-            
-            
             items = {}
-            
             sensor_list = os.listdir(folder_path)
             for sensor in sensor_list:
                 sensor_path = os.path.join(folder_path, sensor)
@@ -99,7 +123,7 @@ class MainWindow(QMainWindow):
                         for data in data_list:
                             if data.split('.')[0] not in items[sub_dir]:
                                 items[sub_dir].append(data.split('.')[0])
-                
+            
             for key, value in items.items():
                 parent = QStandardItem(key)
                 parent.setFlags(parent.flags() & ~Qt.ItemIsEditable)
@@ -113,20 +137,49 @@ class MainWindow(QMainWindow):
 
     def treeItemClicked(self, index):
         self.index = index
+        self.itemSelected = True
         item = self.folder_tree_model.itemFromIndex(index)
         
-        if item.parent().text() is not None:
+        if item.parent() is not None:
             self.dataloader.itemSelected(item.parent().text(), item.text())
         
     def btnPrevClicked(self):
-        print("Previous button clicked")
+        if not self.itemSelected:
+            return
+        # select prev item
+        if self.index.row() > 0:
+            self.folder_tree.setCurrentIndex(self.folder_tree_model.index(self.index.row()-1, 0, self.index.parent()))
+            self.treeItemClicked(self.folder_tree.currentIndex())
         
     def btnNextClicked(self):
-        print("Next button clicked")
+        if not self.itemSelected:
+            return
+        # select next item
+        if self.index.row() < self.folder_tree_model.rowCount(self.index.parent())-1:
+            self.folder_tree.setCurrentIndex(self.folder_tree_model.index(self.index.row()+1, 0, self.index.parent()))
+            self.treeItemClicked(self.folder_tree.currentIndex())
+        else:
+            if self.isPlay:
+                self.btnPlayClicked()
     
     def btnPlayClicked(self):
-        print("Play button clicked")
+        # play thread
+        if not self.itemSelected:
+            return
         
+        if self.isPlay:
+            self.isPlay = False
+            self.btn_play.setText("Play")
+            self.playtimer.stop()
+        else:
+            self.isPlay = True
+            self.btn_play.setText("Pause")
+            self.playtimer.start(self.speed_bar.value())
+        
+    def speedChanged(self):
+        self.playtimer.setInterval(self.speed_bar.value())
+        self.speed_label.setText(str(self.speed_bar.value()))
+
 
 # QApplication 인스턴스 생성
 app = QApplication(sys.argv)
