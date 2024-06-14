@@ -12,6 +12,12 @@ class DataLoader:
         
     def setDataset(self, path):
         self.folder_path = path
+        for cameraWidget in self.cameraWidgets:
+            cameraWidget.close()
+            cameraWidget.deleteLater()
+        for lidarWidget in self.lidarWidgets:
+            lidarWidget.close()
+            lidarWidget.deleteLater()
         self.cameraWidgets.clear()
         self.lidarWidgets.clear()
         

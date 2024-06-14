@@ -138,13 +138,13 @@ class ImageVisualizer(QWidget):
                 
                 obj_points = np.array([
                     [obj_length, obj_length, obj_length, obj_length, 0, 0, 0, 0],
-                    [0, 0, obj_height, obj_height, 0, 0, obj_height, obj_height],
-                    [0, obj_width, obj_width, 0, 0, obj_width, obj_width, 0],
+                    [obj_width, obj_width, 0, 0, obj_width, obj_width, 0, 0],
+                    [obj_height, 0, 0, obj_height, obj_height, 0, 0, obj_height],
                     [1, 1, 1, 1, 1, 1, 1, 1]
                 ])
                 obj_points[0, :] -= obj_length / 2
-                obj_points[1, :] -= obj_height / 2
-                obj_points[2, :] -= obj_width / 2
+                obj_points[1, :] -= obj_width / 2
+                obj_points[2, :] -= obj_height / 2
                 
                 obj_points = np.dot(obj_extrinsic, obj_points)
                 obj_points = np.dot(intrinsic, obj_points[:3, :])

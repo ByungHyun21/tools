@@ -19,6 +19,7 @@ class LiDARVisualizer(QWidget):
         self.root_path = None
         self.sensor_name = None
         self.config = {}
+        self.config['show_box3d'] = True
         
         screen = QApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
@@ -35,7 +36,15 @@ class LiDARVisualizer(QWidget):
         y = self.screen_height * 0.1 + self.screen_height * (0.4 - 0.1) * random.random()
         self.setGeometry(x, y, 800, 600)
         self.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
-    
+        
+        self.hlayout = QHBoxLayout()
+        self.vlayout = QVBoxLayout()
+        self.hlayout.addLayout(self.vlayout)
+        
+        self.vlayout.addWidget(self.GLspace)
+        
+        self.setLayout(self.hlayout)
+        
         self.setGeometry(100, 100, 800, 600)
 
     def setTitle(self, title):
@@ -46,8 +55,91 @@ class LiDARVisualizer(QWidget):
         self.root_path = root_path
         
     def setItem(self, sub_dir, item_name):
-        print('Item Name:', item_name)
-        pass
+        if self.root_path is None:
+            return
+        if sub_dir is None:
+            return
+        if item_name is None:
+            return
+        
+        self.GLspace.clear()
+        
+        lidar_dir_path = os.path.join(self.root_path, 'LiDAR', sub_dir)
+        label_dir_path = os.path.join(self.root_path, 'Label', sub_dir)
+        
+        for lidar_name in os.listdir(lidar_dir_path):
+            if item_name in lidar_name:
+                lidar_path = os.path.join(lidar_dir_path, lidar_name)
+                break
+            
+        label_path = os.path.join(label_dir_path, item_name + '.json')
+        
+        if not os.path.exists(lidar_path):
+            return
+        if not os.path.exists(label_path):
+            return
+        
+        with open(label_path, 'r') as f:
+            label = json.load(f)
+            
+        columns = label['columns']
+        
+        # lidar read
+        pointcloud = np.fromfile(lidar_path, dtype=np.float32)
+        n_columns = len(columns)
+        pointcloud = pointcloud.reshape(-1, n_columns)
+        pc_xidx = columns.index('x')
+        pc_yidx = columns.index('y')
+        pc_zidx = columns.index('z')
+        pointcloud = pointcloud[:, [pc_xidx, pc_yidx, pc_zidx]]
+        
+        # pointcloud visualization
+        self.GLspace.addItem(gl.GLScatterPlotItem(pos=pointcloud, size=1, color=(1, 1, 1, 1)))
+        
+        # label visualization
+        for obj in label['objects']:
+            obj_class = obj['class']
+            
+            if 'box3d' in obj and self.config['show_box3d']:
+                obj_width = obj['box3d']['size']['width']
+                obj_height = obj['box3d']['size']['height']
+                obj_length = obj['box3d']['size']['length']
+                obj_rotation = np.array(obj['box3d']['rotation'], dtype=np.float32).reshape(3, 3)
+                obj_tx = obj['box3d']['translation']['x']
+                obj_ty = obj['box3d']['translation']['y']
+                obj_tz = obj['box3d']['translation']['z']
+                obj_translation = np.array([obj_tx, obj_ty, obj_tz]).reshape(3, 1)
+                
+                points = np.array([
+                    [obj_length, obj_length, obj_length, obj_length, -obj_length, -obj_length, -obj_length, -obj_length],
+                    [obj_width, obj_width, -obj_width, -obj_width, obj_width, obj_width, -obj_width, -obj_width],
+                    [obj_height, -obj_height, -obj_height, obj_height, obj_height, -obj_height, -obj_height, obj_height]
+                ])
+                
+                points[0, :] = points[0, :] / 2
+                points[1, :] = points[1, :] / 2
+                points[2, :] = points[2, :] / 2
+                
+                points = np.dot(obj_rotation, points)
+                points = points + obj_translation
+                
+                edges = [[0, 1], [1, 2], [2, 3], [3, 0],
+                            [4, 5], [5, 6], [6, 7], [7, 4],
+                            [0, 4], [1, 5], [2, 6], [3, 7]]
+                
+                for edge in edges:
+                    p1 = points[:, edge[0]]
+                    p2 = points[:, edge[1]]
+                    self.GLspace.addItem(gl.GLLinePlotItem(pos=np.array([p1, p2]), color=(0, 1, 0, 1)))
+                    
+        # draw lidar axis
+        # x-axis red, y-axis green, z-axis blue
+        axis = np.array([[0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]])
+        self.GLspace.addItem(gl.GLLinePlotItem(pos=axis[[0, 1]], color=(1, 0, 0, 1)))
+        self.GLspace.addItem(gl.GLLinePlotItem(pos=axis[[0, 2]], color=(0, 1, 0, 1)))
+        self.GLspace.addItem(gl.GLLinePlotItem(pos=axis[[0, 3]], color=(0, 0, 1, 1)))
+        
+    
     
     def setConfig(self, config):
         self.config = config

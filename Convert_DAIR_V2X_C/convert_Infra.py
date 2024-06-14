@@ -118,6 +118,7 @@ def main(source_root_dir, output_root_dir):
     if not os.path.exists(os.path.join(output_root_dir, "Valid", "LiDAR", "Label")):
         os.makedirs(os.path.join(output_root_dir, "Valid", "LiDAR", "Label"))
     
+    cnt = 0
     for info in data_info:
         image_path = os.path.join(image_dir, info["image_path"].split("/")[-1])
         pointcloud_path = os.path.join(lidar_dir, info["pointcloud_path"].split("/")[-1])
@@ -160,7 +161,9 @@ def main(source_root_dir, output_root_dir):
             
         parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, camera_label, output_path, sub_dir_name)
         
-        break
+        if cnt > 5:
+            break
+        cnt += 1
 
 def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, camera_label, output_path, sub_dir_name):
     if not os.path.exists(os.path.join(output_path, "Camera/Image", sub_dir_name)):
@@ -209,6 +212,7 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
     camera_label_dict['extrinsic']['translation']['y'] = float(ext_translation[1, 0])
     camera_label_dict['extrinsic']['translation']['z'] = float(ext_translation[2, 0])
     
+    # parsing Camera Object Label
     camera_label_dict['objects'] = []
     for obj in lidar_label:
         obj_dict = {}
@@ -239,9 +243,9 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
         if '3d_dimensions' in obj and '3d_location' in obj:
             obj_dict['box3d'] = {}
             obj_dict['box3d']['size'] = {}
-            obj_dict['box3d']['size']['width'] = obj['3d_dimensions']['h']
+            obj_dict['box3d']['size']['width'] = obj['3d_dimensions']['w']
             obj_dict['box3d']['size']['length'] = obj['3d_dimensions']['l']
-            obj_dict['box3d']['size']['height'] = obj['3d_dimensions']['w']
+            obj_dict['box3d']['size']['height'] = obj['3d_dimensions']['h']
             
             rot_3d = obj['rotation']
             # rotation to quaternion
@@ -298,8 +302,56 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
     # Save camera label as .json
     with open(os.path.join(output_path, "Camera/Label", sub_dir_name, f"{data_name}.json"), 'w') as f:
         json.dump(camera_label_dict, f, indent=4)
+    
+    # LiDAR
+    lidar_label_dict = {}
+    lidar_label_dict['columns'] = ['x', 'y', 'z']
+    lidar_label_dict['extrinsic'] = {}
+    lidar_label_dict['extrinsic']['rotation'] = np.zeros(3).tolist()
+    lidar_label_dict['extrinsic']['translation'] = np.zeros(3).tolist()
+    
+    # Parsing LiDAR Object Label
+    lidar_label_dict['objects'] = []
+    for obj in lidar_label:
+        obj_dict = {}
+        obj_dict['class'] = obj['type']
+            
+        if '3d_dimensions' in obj and '3d_location' in obj:
+            obj_dict['box3d'] = {}
+            obj_dict['box3d']['size'] = {}
+            obj_dict['box3d']['size']['width'] = obj['3d_dimensions']['w']
+            obj_dict['box3d']['size']['length'] = obj['3d_dimensions']['l']
+            obj_dict['box3d']['size']['height'] = obj['3d_dimensions']['h']
+            
+            rot_3d = obj['rotation']
+            # rotation to quaternion
+            obj_rotation = np.array([
+                [np.cos(rot_3d), -np.sin(rot_3d), 0],
+                [np.sin(rot_3d), np.cos(rot_3d), 0],
+                [0, 0, 1]
+            ])
+            
+            obj_tx, obj_ty, obj_tz = obj['3d_location']['x'], obj['3d_location']['y'], obj['3d_location']['z']
+            
+            ext_obj = np.hstack([obj_rotation, np.array([[obj_tx], [obj_ty], [obj_tz]])])
+            ext_obj = np.vstack([ext_obj, np.array([0, 0, 0, 1])])
+            
+            tx = ext_obj[0, 3]
+            ty = ext_obj[1, 3]
+            tz = ext_obj[2, 3]
+            
+            obj_dict['box3d']['rotation'] = ext_obj[:3, :3].reshape(-1).tolist()
+            
+            obj_dict['box3d']['translation'] = {}
+            obj_dict['box3d']['translation']['x'] = tx
+            obj_dict['box3d']['translation']['y'] = ty
+            obj_dict['box3d']['translation']['z'] = tz
         
-    pass
+        lidar_label_dict['objects'].append(obj_dict)
+
+    # Save LiDAR label as .json
+    with open(os.path.join(output_path, "LiDAR/Label", sub_dir_name, f"{pointcloud_shifted}.json"), 'w') as f:
+        json.dump(lidar_label_dict, f, indent=4)
     
 
 if __name__ == "__main__":
