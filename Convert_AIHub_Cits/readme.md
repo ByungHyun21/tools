@@ -64,4 +64,18 @@ python convert.py --source_root_dir "path/to/dataset" --output_root_dir "path/to
 
 # Result
 
-![Pangyo_A](Pangyo_A.bmp)
+## Pangyo_A
+
+![Pangyo_A](Pangyo_A.png)
+
+## Pangyo_B
+
+![Pangyo_B](Pangyo_B.png)
+
+## Suwon_A
+
+![Suwon_A](Suwon_A.png)
+
+## Suwon_B
+
+![Suwon_B](Suwon_B.png)
