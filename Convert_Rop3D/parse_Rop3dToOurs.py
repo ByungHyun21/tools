@@ -231,16 +231,24 @@ def parsing(source_dir, target_dir, file_list_txt):
         with open(os.path.join(label_subfolder_path, f"{file_name_save}.json"), 'w') as f:
             json.dump(camera_label_dict, f, indent=4)
 
-source_dir = 'D:/Rope3D_cits/Rope3D_data'
+if __name__ is "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Process directories.")
+    parser.add_argument('--source_root_dir', type=str, required=False, help='Path to the source root directory', default='D:\Rope3D_data')
+    parser.add_argument('--output_root_dir', type=str, required=False, help='Path to the output root directory', default='D:\Rope3D_Ours')
 
-target_dir, file_list_txt = 'D:/Rope3D_cits/Rope3D_2100', 'train_2100.txt'
-parsing(source_dir, target_dir, file_list_txt)
+    args = parser.parse_args()
 
-target_dir, file_list_txt = 'D:/Rope3D_cits/Rope3D_2700', 'train_2700.txt'
-parsing(source_dir, target_dir, file_list_txt)
+    source_dir = args.source_root_dir
 
-target_dir, file_list_txt = 'D:/Rope3D_cits/Rope3D_2100', 'test_2100.txt'
-parsing(source_dir, target_dir, file_list_txt)
+    target_dir, file_list_txt = os.path.join(args.output_root_dir , "Rope3D_2100"), 'train_2100.txt'
+    parsing(source_dir, target_dir, file_list_txt)
 
-target_dir, file_list_txt = 'D:/Rope3D_cits/Rope3D_2700', 'test_2700.txt'
-parsing(source_dir, target_dir, file_list_txt)
+    target_dir, file_list_txt = os.path.join(args.output_root_dir , "Rope3D_2700"), 'train_2700.txt'
+    parsing(source_dir, target_dir, file_list_txt)
+
+    target_dir, file_list_txt = os.path.join(args.output_root_dir , "Rope3D_2100"), 'test_2100.txt'
+    parsing(source_dir, target_dir, file_list_txt)
+
+    target_dir, file_list_txt = os.path.join(args.output_root_dir , "Rope3D_2700"), 'test_2700.txt'
+    parsing(source_dir, target_dir, file_list_txt)
