@@ -8,6 +8,8 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
 import numpy as np
+from scipy.stats import norm
+import matplotlib.pyplot as plt
 
 import random
 import cv2
@@ -91,10 +93,52 @@ class LiDARVisualizer(QWidget):
         pc_xidx = columns.index('x')
         pc_yidx = columns.index('y')
         pc_zidx = columns.index('z')
-        pointcloud = pointcloud[:, [pc_xidx, pc_yidx, pc_zidx]]
         
-        # pointcloud visualization
-        self.GLspace.addItem(gl.GLScatterPlotItem(pos=pointcloud, size=1, color=(1, 1, 1, 1)))
+        
+        if 'intensity' in columns:
+            intensity_idx = columns.index('intensity')
+            intensity = pointcloud[:, intensity_idx]
+            
+            # intensity 값을 8비트 정수형으로 변환
+            intensity = intensity.astype(np.uint8)
+            
+            mean = np.mean(intensity)
+            std = np.std(intensity)
+            
+            # 2 시그마를 벗어나는 값을 2 시그마에 위치한 값으로 대체
+            lower_bound = mean - 2 * std
+            upper_bound = mean + 2 * std
+
+            adjusted_data = np.clip(intensity, lower_bound, upper_bound)
+            
+            # Find the histogram and the bins
+            hist, bins = np.histogram(adjusted_data, bins=256, density=True)
+            cdf = hist.cumsum()  # Cumulative distribution function
+            cdf_normalized = cdf * (bins[:-1] - bins[0])
+            
+            # Normalize the cdf
+            cdf_m = np.ma.masked_equal(cdf, 0)
+            cdf_m = (cdf_m - cdf_m.min()) * 255 / (cdf_m.max() - cdf_m.min())
+            cdf = np.ma.filled(cdf_m, 0).astype('uint8')
+            
+            equalized_data = cdf[adjusted_data.astype('uint8')]
+            
+            # colormap 적용을 위한 준비
+            equalized_intensity = equalized_data.astype('uint8')
+
+            # 예시 colormap
+            cmap = plt.get_cmap('turbo')
+
+            # 결과값을 cmap.map(equalized_intensity, mode='byte')에 넣음
+            colors = cmap(equalized_intensity / 255, bytes=True)
+            colors = colors / 255.0
+            
+            pointcloud = pointcloud[:, [pc_xidx, pc_yidx, pc_zidx]]
+            self.GLspace.addItem(gl.GLScatterPlotItem(pos=pointcloud, size=1, color=colors))
+        else:
+            # pointcloud visualization
+            pointcloud = pointcloud[:, [pc_xidx, pc_yidx, pc_zidx]]
+            self.GLspace.addItem(gl.GLScatterPlotItem(pos=pointcloud, size=1, color=(1, 1, 1, 1)))
         
         # label visualization
         for obj in label['objects']:

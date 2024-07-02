@@ -14,6 +14,8 @@ from pyqtgraph import ColorMap
 
 import pyqtgraph as pg
 import numpy as np
+from scipy.stats import norm
+import matplotlib.pyplot as plt
 import json
 import math
 import copy
@@ -54,23 +56,49 @@ class LiDARDataWidget(gl.GLViewWidget):
         self.pc = data
         if self.pc.shape[1] == 4:
             intensity = self.pc[:, 3]
-            # Create a jet colormap
-            jet_colors = [
-                (0, 0, 128, 255), (0, 0, 255, 255), (0, 128, 255, 255), (0, 255, 255, 255),
-                (128, 255, 128, 255), (255, 255, 0, 255), (255, 128, 0, 255), (255, 0, 0, 255),
-                (128, 0, 0, 255)
-            ]
-            cmap = ColorMap(pos=np.linspace(0.0, 1.0, len(jet_colors)), color=jet_colors)
+            
+            # intensity 값을 8비트 정수형으로 변환
+            intensity = intensity.astype(np.uint8)
+            
+            mean = np.mean(intensity)
+            std = np.std(intensity)
+            
+            # 2 시그마를 벗어나는 값을 2 시그마에 위치한 값으로 대체
+            lower_bound = mean - 2 * std
+            upper_bound = mean + 2 * std
 
-            # Normalize intensity values to the range 0-1
-            intensity_normalized = (intensity - intensity.min()) / (intensity.max() - intensity.min())
+            adjusted_data = np.clip(intensity, lower_bound, upper_bound)
+            
+            # Find the histogram and the bins
+            hist, bins = np.histogram(adjusted_data, bins=256, density=True)
+            cdf = hist.cumsum()  # Cumulative distribution function
+            cdf_normalized = cdf * (bins[:-1] - bins[0])
+            
+            # Normalize the cdf
+            cdf_m = np.ma.masked_equal(cdf, 0)
+            cdf_m = (cdf_m - cdf_m.min()) * 255 / (cdf_m.max() - cdf_m.min())
+            cdf = np.ma.filled(cdf_m, 0).astype('uint8')
+            
+            equalized_data = cdf[adjusted_data.astype('uint8')]
+            
+            # colormap 적용을 위한 준비
+            equalized_intensity = equalized_data.astype('uint8')
+
+            # 예시 colormap
+            cmap = plt.get_cmap('turbo')
+
+            # 결과값을 cmap.map(equalized_intensity, mode='byte')에 넣음
+            self.colors = cmap(equalized_intensity / 255, bytes=True)
+            
 
             # Map intensity values to colors
-            self.colors = cmap.map(intensity_normalized, mode='byte')
+            # self.colors = cmap.map(equalized_intensity, mode='byte')
         else:
-            self.colors = np.ones((self.pc.shape[0], 4)) * np.array([0, 255, 0, 255])
+            self.colors = np.ones((self.pc.shape[0], 4)) * np.array([255, 255, 255, 255])
         
     def updateView(self):
+        if self.pc is None:
+            return
         # Clear all items
         self.items = []
         
@@ -79,21 +107,43 @@ class LiDARDataWidget(gl.GLViewWidget):
         
         if self.pc.shape[1] == 4:
             intensity = self.pc[:, 3]
-            # Create a jet colormap
-            jet_colors = [
-                (0, 0, 128, 255), (0, 0, 255, 255), (0, 128, 255, 255), (0, 255, 255, 255),
-                (128, 255, 128, 255), (255, 255, 0, 255), (255, 128, 0, 255), (255, 0, 0, 255),
-                (128, 0, 0, 255)
-            ]
-            cmap = ColorMap(pos=np.linspace(0.0, 1.0, len(jet_colors)), color=jet_colors)
+            # intensity 값을 8비트 정수형으로 변환
+            intensity = intensity.astype(np.uint8)
+            
+            mean = np.mean(intensity)
+            std = np.std(intensity)
+            
+            # 2 시그마를 벗어나는 값을 2 시그마에 위치한 값으로 대체
+            lower_bound = mean - 2 * std
+            upper_bound = mean + 2 * std
 
-            # Normalize intensity values to the range 0-1
-            intensity_normalized = (intensity - intensity.min()) / (intensity.max() - intensity.min())
+            adjusted_data = np.clip(intensity, lower_bound, upper_bound)
+            
+            # Find the histogram and the bins
+            hist, bins = np.histogram(adjusted_data, bins=256, density=True)
+            cdf = hist.cumsum()  # Cumulative distribution function
+            cdf_normalized = cdf * (bins[:-1] - bins[0])
+            
+            # Normalize the cdf
+            cdf_m = np.ma.masked_equal(cdf, 0)
+            cdf_m = (cdf_m - cdf_m.min()) * 255 / (cdf_m.max() - cdf_m.min())
+            cdf = np.ma.filled(cdf_m, 0).astype('uint8')
+            
+            equalized_data = cdf[adjusted_data.astype('uint8')]
+            
+            # colormap 적용을 위한 준비
+            equalized_intensity = equalized_data.astype('uint8')
+
+            # 예시 colormap
+            cmap = plt.get_cmap('turbo')
+
+            # 결과값을 cmap.map(equalized_intensity, mode='byte')에 넣음
+            self.colors = cmap(equalized_intensity / 255, bytes=True)
 
             # Map intensity values to colors
-            self.colors = cmap.map(intensity_normalized, mode='byte')
+            # self.colors = cmap.map(equalized_intensity, mode='byte')
         else:
-            self.colors = np.ones((self.pc.shape[0], 4)) * np.array([0, 255, 0, 255])
+            self.colors = np.ones((self.pc.shape[0], 4)) * np.array([255, 255, 255, 255])
         
         pc_color = copy.deepcopy(self.colors)
         if self.paramWidget.checkColorFromCamera.isChecked():
@@ -177,7 +227,10 @@ class LiDARDataWidget(gl.GLViewWidget):
                 length = float(box3d['size']['length'])
                 height = float(box3d['size']['height'])
                 
-                translation = np.array(box3d['translation'], dtype=np.float32).reshape(3, 1)
+                tx = float(box3d['translation']['x'])
+                ty = float(box3d['translation']['y'])
+                tz = float(box3d['translation']['z'])
+                translation = np.array([tx, ty, tz], dtype=np.float32).reshape(3, 1)
                 rotation = np.array(box3d['rotation'], dtype=np.float32).reshape(3, 3)
                 
                 extObject = np.vstack([np.hstack([rotation, translation]), np.array([0, 0, 0, 1])])
@@ -393,8 +446,8 @@ class LiDARParamWidget(QWidget):
         
         self.columns = param['columns']
         
-        ext_rot = np.array(param['extrinsic_rotation'], dtype=np.float32).reshape(3, 3)
-        rot = rotationMatrixToEulerAngles(ext_rot, 'ZYX')
+        ext_rot = np.array(param['extrinsic']['rotation'], dtype=np.float32).reshape(3, 3)
+        rot = rotationMatrixToEulerAngles(ext_rot, self.currentRotationType)
         self.Rx = math.degrees(rot[0])
         self.Ry = math.degrees(rot[1])
         self.Rz = math.degrees(rot[2])
@@ -403,10 +456,9 @@ class LiDARParamWidget(QWidget):
         self.RyWidget.setText(str(self.Ry))
         self.RzWidget.setText(str(self.Rz))
         
-        ext_trans = np.array(param['extrinsic_translation'], dtype=np.float32)
-        self.tx = ext_trans[0]
-        self.ty = ext_trans[1]
-        self.tz = ext_trans[2]
+        self.tx = param['extrinsic']['translation']['x']
+        self.ty = param['extrinsic']['translation']['y']
+        self.tz = param['extrinsic']['translation']['z']
         
         self.txWidget.setText(str(self.tx))
         self.tyWidget.setText(str(self.ty))

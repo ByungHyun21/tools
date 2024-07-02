@@ -44,6 +44,8 @@ class CameraDataWidget(pg.ImageView):
         
     def updateView(self):
         self.image = cv2.imread(self.imagePath)
+        if self.image is None:
+            return
         image = copy.deepcopy(self.image)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         imh, imw, imc = image.shape
@@ -121,7 +123,10 @@ class CameraDataWidget(pg.ImageView):
                         length = float(size['length'])
                         
                         rotation = np.array(box3d['rotation'], dtype=np.float32).reshape(3, 3)
-                        translation = np.array(box3d['translation'], dtype=np.float32).reshape(3, 1)
+                        tx = box3d['translation']['x']
+                        ty = box3d['translation']['y']
+                        tz = box3d['translation']['z']
+                        translation = np.array([tx, ty, tz], dtype=np.float32).reshape(3, 1)
                         ext = np.vstack([np.hstack([rotation, translation]), [0, 0, 0, 1]])
                         
                         boxPoints = np.array([
@@ -181,13 +186,16 @@ class CameraDataWidget(pg.ImageView):
                     length = float(size['length'])
                     
                     rotation = np.array(box3d['rotation'], dtype=np.float32).reshape(3, 3)
-                    translation = np.array(box3d['translation'], dtype=np.float32).reshape(3, 1)
+                    tx = box3d['translation']['x']
+                    ty = box3d['translation']['y']
+                    tz = box3d['translation']['z']
+                    translation = np.array([tx, ty, tz], dtype=np.float32).reshape(3, 1)
                     ext = np.vstack([np.hstack([rotation, translation]), [0, 0, 0, 1]])
                     
                     boxPoints = np.array([
                         [length/2, length/2, length/2, length/2, -length/2, -length/2, -length/2, -length/2],
-                        [height/2, -height/2, -height/2, height/2, height/2, -height/2, -height/2, height/2],
-                        [width/2, width/2, -width/2, -width/2, width/2, width/2, -width/2, -width/2],
+                        [width/2, -width/2, -width/2, width/2, width/2, -width/2, -width/2, width/2],
+                        [height/2, height/2, -height/2, -height/2, height/2, height/2, -height/2, -height/2],
                         [1, 1, 1, 1, 1, 1, 1, 1]
                     ])
                     
@@ -501,16 +509,15 @@ class CameraParamWidget(QWidget):
         with open(paramPath, 'r') as f:
             param = json.load(f)
         
-        intrinsic = np.array(param['intrinsic'], dtype=np.float32).reshape(3, 3)
-        ex_rot = np.array(param['extrinsic_rotation'], dtype=np.float32).reshape(3, 3)
-        ex_trans = np.array(param['extrinsic_translation'], dtype=np.float32)
         
-        self.fx = float(intrinsic[0, 0])
-        self.fy = float(intrinsic[1, 1])
-        self.cx = float(intrinsic[0, 2])
-        self.cy = float(intrinsic[1, 2])
+        
+        self.fx = float(param['intrinsic']['fx'])
+        self.fy = float(param['intrinsic']['fy'])
+        self.cx = float(param['intrinsic']['cx'])
+        self.cy = float(param['intrinsic']['cy'])
         
         #rotation decompose
+        ex_rot = np.array(param['extrinsic']['rotation'], dtype=np.float32).reshape(3, 3)
         type = self.rotationTypeList.currentText()
         Rx, Ry, Rz = rotationMatrixToEulerAngles(ex_rot, type)
         Rx = float(Rx)
@@ -523,9 +530,9 @@ class CameraParamWidget(QWidget):
         self.Rz = math.degrees(float(Rz_))
         
         
-        self.tx = float(ex_trans[0])
-        self.ty = float(ex_trans[1])
-        self.tz = float(ex_trans[2])
+        self.tx = float(param['extrinsic']['translation']['x'])
+        self.ty = float(param['extrinsic']['translation']['y'])
+        self.tz = float(param['extrinsic']['translation']['z'])
         
         self.fxWidget.setText(str(self.fx))
         self.fyWidget.setText(str(self.fy))

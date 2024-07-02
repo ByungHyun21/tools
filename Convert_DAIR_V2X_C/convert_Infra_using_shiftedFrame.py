@@ -86,14 +86,9 @@ def main(source_root_dir, output_root_dir):
           
     if not os.path.exists(os.path.join(output_root_dir, "Train")):
         os.makedirs(os.path.join(output_root_dir, "Train"))
-    else:
-        # Remove all files in the directory and make the directory empty.
-        os.system(f"rm -rf {os.path.join(output_root_dir, 'Train')}/*")
         
     if not os.path.exists(os.path.join(output_root_dir, "Valid")):
         os.makedirs(os.path.join(output_root_dir, "Valid"))
-    else:
-        os.system(f"rm -rf {os.path.join(output_root_dir, 'Valid')}/*")
     
     if not os.path.exists(os.path.join(output_root_dir, "Train", "Camera")):
         os.makedirs(os.path.join(output_root_dir, "Train", "Camera"))
@@ -160,13 +155,19 @@ def main(source_root_dir, output_root_dir):
             output_path = os.path.join(output_root_dir, "Train")
         elif sub_dir_name in seqs_val:
             output_path = os.path.join(output_root_dir, "Valid")
-            
+        
+        range_min = float(sub_dir_name.split("_")[1])
+        range_max = float(sub_dir_name.split("_")[2])
+        
+        if float(pointcloud_idx) < range_min or float(pointcloud_idx) > range_max:
+            continue
+        
+
         parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, camera_label, output_path, sub_dir_name)
         
-        # if cnt > 5:
-        #     break
         cnt += 1
         print(f"Processing {cnt}th data of {len(data_info)}: {sub_dir_name}")
+        
 
 def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, camera_label, output_path, sub_dir_name):
     if not os.path.exists(os.path.join(output_path, "Camera/Image", sub_dir_name)):
@@ -310,8 +311,12 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
     lidar_label_dict = {}
     lidar_label_dict['columns'] = ['x', 'y', 'z']
     lidar_label_dict['extrinsic'] = {}
-    lidar_label_dict['extrinsic']['rotation'] = np.zeros(3).tolist()
-    lidar_label_dict['extrinsic']['translation'] = np.zeros(3).tolist()
+    lidar_label_dict['extrinsic']['rotation'] = np.zeros(9).tolist()
+    lidar_label_dict['extrinsic']['translation'] = {}
+    lidar_label_dict['extrinsic']['translation']['x'] = 0
+    lidar_label_dict['extrinsic']['translation']['y'] = 0
+    lidar_label_dict['extrinsic']['translation']['z'] = 0
+    
     
     # Parsing LiDAR Object Label
     lidar_label_dict['objects'] = []
@@ -359,11 +364,9 @@ def parsing(image_path, pointcloud_path, intrinsic, extrinsic, lidar_label, came
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process directories.")
-    parser.add_argument('--source_root_dir', type=str, required=False, help='Path to the source root directory')
-    parser.add_argument('--output_root_dir', type=str, required=False, help='Path to the output root directory')
+    parser.add_argument('--source_root_dir', type=str, required=False, help='Path to the source root directory', default="D:/DAIR-V2X-C/Full Dataset (train&val)")
+    parser.add_argument('--output_root_dir', type=str, required=False, help='Path to the output root directory', default="D:/DAIR-V2X-C-Infra")
 
     args = parser.parse_args()
     
-    # main(args.source_root_dir, args.output_root_dir)
-    
-    main("D:/DAIR-V2X-C/Full Dataset (train&val)", "D:/DAIR-V2X-C-Infra")
+    main(args.source_root_dir, args.output_root_dir)
