@@ -51,11 +51,11 @@ Full Dataset (train&val)
 convert Infrasturcture data to M-Fast/L-Fast Form
 
 ```python
-python convert_infra.py --source_root_dir "path/to/Full Dataset (train&val)" --output_root_dir "path/to/output"
+python convert_infra.py --source_root_dir "path/to/dataset" --output_root_dir "path/to/output"
 ```
 
 convert Vehicle data to M-Fast/L-Fast Form
 
 ```python
-python convert_vehicle.py --source_root_dir "path/to/Full Dataset (train&val)" --output_root_dir "path/to/output"
+python convert_vehicle.py --source_root_dir "path/to/dataset" --output_root_dir "path/to/output"
 ```

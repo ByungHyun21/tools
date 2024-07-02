@@ -27,11 +27,11 @@ Full
 convert KITTI to M-Fast/L-Fast Form
 
 ```python
-python convert_infra.py --source_root_dir "path/to/Full Dataset (train&val)" --output_root_dir "path/to/output"
+python convert_kitti.py --source_root_dir "path/to/dataset" --output_root_dir "path/to/output"
 ```
 
 convert KITTI_Subset to M-Fast/L-Fast Form
 
 ```python
-python convert_vehicle.py --source_root_dir "path/to/Full Dataset (train&val)" --output_root_dir "path/to/output"
+python convert_kitti_subset.py --source_root_dir "path/to/dataset" --output_root_dir "path/to/output"
 ```
