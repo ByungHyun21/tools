@@ -1,13 +1,18 @@
 # Rope3D
+
 "Rope3D: TheRoadside Perception Dataset for Autonomous Driving and Monocular 3D Object Detection Task"
+
 https://thudair.baai.ac.cn/rope
 
 # Environment
 python 3.10.14
 
 opencv
+
 numpy
+
 pyntcloud
+
 open3d
 
 # parse_Rope3dToOurs.py
