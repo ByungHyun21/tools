@@ -4,28 +4,42 @@ import json
 from tqdm import tqdm
 
 def main(dataset_path):
-    # train_path = os.path.join(dataset_path, 'Train')
-    # if os.path.exists(train_path):
-    #     sensors = os.listdir(train_path)
-    #     for sensor in sensors:
-    #         sensor_path = os.path.join(train_path, sensor)
-    #         analysis(sensor_path)
+    train_path = os.path.join(dataset_path, 'Train')
+    if os.path.exists(train_path):
+        sensors = os.listdir(train_path)
+        for sensor in sensors:
+            sensor_path = os.path.join(train_path, sensor)
+            analysis(sensor_path, sensor, 'Train')
             
     valid_path = os.path.join(dataset_path, 'Valid')        
     if os.path.exists(valid_path):
         sensors = os.listdir(valid_path)
         for sensor in sensors:
             sensor_path = os.path.join(valid_path, sensor)
-            analysis(sensor_path)
+            analysis(sensor_path, sensor, 'Valid')
     
-    # test_path = os.path.join(dataset_path, 'Test')        
-    # if os.path.exists(test_path):
-    #     sensors = os.listdir(test_path)
-    #     for sensor in sensors:
-    #         sensor_path = os.path.join(test_path, sensor)
-    #         analysis(sensor_path)
-            
-def analysis(root_path):
+    test_path = os.path.join(dataset_path, 'Test')        
+    if os.path.exists(test_path):
+        sensors = os.listdir(test_path)
+        for sensor in sensors:
+            sensor_path = os.path.join(test_path, sensor)
+            analysis(sensor_path, sensor, 'Test')
+
+def save_analysis(data, sensor, purpose, data_type):
+    txt_name = sensor + '_' + purpose + '_' + data_type + '.txt'
+    
+    #save data to txt file
+    with open(txt_name, 'w') as f:
+        for key in data:
+            f.write(key + '\n')
+            if type(data[key]) == dict:
+                for k in data[key]:
+                    f.write('  ' + k + ': ' + str(data[key][k]) + '\n')
+            else:
+                f.write('  ' + str(data[key]) + '\n')
+            f.write('\n')
+          
+def analysis(root_path, sensor, purpose):
     # list of analysis
     # 1. number of files
     # 2. number of objects
@@ -33,15 +47,22 @@ def analysis(root_path):
     # 4. image size
     # 5. number of images
     
-    # if 'Image' in os.listdir(root_path):
-    #     analysed_data = analysis_image(os.path.join(root_path, 'Image'))
+    if 'Image' in os.listdir(root_path):
+        analysed_data = analysis_image(os.path.join(root_path, 'Image'))
+        print_analysis(analysed_data)
+        save_analysis(analysed_data, sensor, purpose, 'Image')
+        if 'Label' in os.listdir(root_path):
+            analysed_data = analysis_label(os.path.join(root_path, 'Label'))
+            print_analysis(analysed_data)
+            save_analysis(analysed_data, sensor, purpose, 'Image_Label')
+    # if 'LiDAR' in os.listdir(root_path):
+    #     analysed_data = analysis_lidar(os.path.join(root_path, 'LiDAR'))
     #     print_analysis(analysed_data)
-    if 'LiDAR' in os.listdir(root_path):
-        analysed_data = analysis_lidar(os.path.join(root_path, 'LiDAR'))
-        print_analysis(analysed_data)
-    if 'Label' in os.listdir(root_path):
-        analysed_data = analysis_label(os.path.join(root_path, 'Label'))
-        print_analysis(analysed_data)
+    #     save_analysis(analysed_data, sensor, purpose, 'LiDAR')
+    #     if 'Label' in os.listdir(root_path):
+    #         analysed_data = analysis_label(os.path.join(root_path, 'Label'))
+    #         print_analysis(analysed_data)
+    #         save_analysis(analysed_data, sensor, purpose, 'LiDAR_Label')
     
     pass
 
@@ -174,6 +195,17 @@ def analysis_label(label_path):
         zdepth_mu[key] = sum(zdepth[key]) / len(zdepth[key])
         zdepth_sigma[key] = (sum([(z - zdepth_mu[key])**2 for z in zdepth[key]]) / len(zdepth[key]))**0.5
         
+    # zdepth for all classes
+    zdepth_mu_all = 0
+    zdepth_sigma_all = 0
+    count = 0
+    for key in zdepth:
+        if key == 'Car' or key == 'Pedestrian' or key == 'Cyclist':
+            zdepth_mu_all += sum(zdepth[key])
+            count += len(zdepth[key])
+    zdepth_mu_all /= count
+    zdepth_sigma_all = (sum([(z - zdepth_mu_all)**2 for key in zdepth for z in zdepth[key]]) / count)**0.5
+        
     # box3d size mu, sigma
     width_mu = {}
     width_sigma = {}
@@ -199,6 +231,8 @@ def analysis_label(label_path):
         'box3d': box3d,
         'zdepth_mu': zdepth_mu,
         'zdepth_sigma': zdepth_sigma,
+        'zdepth_mu_all': zdepth_mu_all,
+        'zdepth_sigma_all': zdepth_sigma_all,
         'box3d_width_mu': width_mu,
         'box3d_width_sigma': width_sigma,
         'box3d_height_mu': height_mu,
@@ -212,7 +246,7 @@ def analysis_label(label_path):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='D:/KITTI_3D_Detection', help='dataset path')
+    parser.add_argument('--dataset', type=str, default='D:/KITTI_Raw', help='dataset path')
     args = parser.parse_args()
     
     main(args.dataset)

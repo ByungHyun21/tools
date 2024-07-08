@@ -1,0 +1,9 @@
+size
+  1242x375: 2228
+
+num_images
+  2228
+
+image_format
+  png: 2228
+
