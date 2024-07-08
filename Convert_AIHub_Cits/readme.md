@@ -17,7 +17,7 @@ open3d
 
 # convert_Infra.py and convert_Vehicle.py
 
-source_root_dir is "Full Dataset (train&val)"
+source_root_dir is "dataset"
 
 ```
 dataset (rename "지능형 인프라 센서 기반 동적객체 인지 데이터")

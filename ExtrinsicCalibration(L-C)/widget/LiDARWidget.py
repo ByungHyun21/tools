@@ -195,7 +195,10 @@ class LiDARDataWidget(gl.GLViewWidget):
                         x = int(pc[0, i])
                         y = int(pc[1, i])
                         if x >= 0 and x < image.shape[1] and y >= 0 and y < image.shape[0]:
-                            pc_color[i] = np.hstack([image[y, x], 255])
+                            pc_color[i, 0] = image[y, x, 2]
+                            pc_color[i, 1] = image[y, x, 1]
+                            pc_color[i, 2] = image[y, x, 0]
+                            pc_color[i, 3] = 255
                         
         
         
