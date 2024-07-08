@@ -212,7 +212,7 @@ def analysis_label(label_path):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='D:/AIHUB_cits', help='dataset path')
+    parser.add_argument('--dataset', type=str, default='D:/KITTI_3D_Detection', help='dataset path')
     args = parser.parse_args()
     
     main(args.dataset)

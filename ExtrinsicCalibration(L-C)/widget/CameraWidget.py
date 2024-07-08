@@ -546,8 +546,6 @@ class CameraParamWidget(QWidget):
         self.tzWidget.setText(str(self.tz))
         
         self.objects = None
-        if 'object' in param:
-            self.objects = param['object']
         if 'objects' in param:
             self.objects = param['objects']
         

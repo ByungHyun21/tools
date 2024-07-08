@@ -296,9 +296,9 @@ def convert(source_dir, target_dir):
                 
                 obj_lidar.append(one_obj_lidar)
                 
-        label_2['object'] = obj_2
-        label_3['object'] = obj_3
-        label_lidar['object'] = obj_lidar
+        label_2['objects'] = obj_2
+        label_3['objects'] = obj_3
+        label_lidar['objects'] = obj_lidar
         
         # Save
         if idx < 6000:

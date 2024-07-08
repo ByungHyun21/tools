@@ -470,8 +470,6 @@ class LiDARParamWidget(QWidget):
         self.objects = None
         if 'objects' in param:
             self.objects = param['objects']
-        if 'object' in param:
-            self.objects = param['object']
         
     def rotationTypeChanged(self):
         self.currentRotationType = self.rotationTypeList.currentText()

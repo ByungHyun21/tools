@@ -250,7 +250,7 @@ def converting(source_dir, target_dir):
             label['extrinsic']['translation']['y'] = float(extrinsic_left[1, 3])
             label['extrinsic']['translation']['z'] = float(extrinsic_left[2, 3])
             
-            label['object'] = []
+            label['objects'] = []
             for obj_idx, obj in enumerate(labels[idx]):
                 obj_class = obj[0]
                 h, w, l = obj[1]
@@ -277,7 +277,7 @@ def converting(source_dir, target_dir):
                 obj_label['box3d']['translation']['y'] = float(ext_obj[1, 3])
                 obj_label['box3d']['translation']['z'] = float(ext_obj[2, 3])
                 
-                label['object'].append(obj_label)
+                label['objects'].append(obj_label)
                 
             if not is_validation:
                 with open(os.path.join(target_dir, 'Train', 'StereoLeft', 'Label', sub_dir, image_left_file.replace('png', 'json')), 'w') as f:
@@ -301,7 +301,7 @@ def converting(source_dir, target_dir):
             label['extrinsic']['translation']['y'] = float(extrinsic_right[1, 3])
             label['extrinsic']['translation']['z'] = float(extrinsic_right[2, 3])
             
-            label['object'] = []
+            label['objects'] = []
             for obj_idx, obj in enumerate(labels[idx]):
                 obj_class = obj[0]
                 h, w, l = obj[1]
@@ -328,7 +328,7 @@ def converting(source_dir, target_dir):
                 obj_label['box3d']['translation']['y'] = float(ext_obj[1, 3])
                 obj_label['box3d']['translation']['z'] = float(ext_obj[2, 3])
                 
-                label['object'].append(obj_label)
+                label['objects'].append(obj_label)
                 
             if not is_validation:
                 with open(os.path.join(target_dir, 'Train', 'StereoRight', 'Label', sub_dir, image_right_file.replace('png', 'json')), 'w') as f:
@@ -348,7 +348,7 @@ def converting(source_dir, target_dir):
             label['extrinsic']['translation']['y'] = ext_lidar[1, 3]
             label['extrinsic']['translation']['z'] = ext_lidar[2, 3]
             
-            label['object'] = []
+            label['objects'] = []
             for obj_idx, obj in enumerate(labels[idx]):
                 obj_class = obj[0]
                 h, w, l = obj[1]
@@ -372,7 +372,7 @@ def converting(source_dir, target_dir):
                 obj_label['box3d']['translation']['y'] = ext_obj[1, 3]
                 obj_label['box3d']['translation']['z'] = ext_obj[2, 3]
                 
-                label['object'].append(obj_label)
+                label['objects'].append(obj_label)
                 
             if not is_validation:
                 with open(os.path.join(target_dir, 'Train', 'LiDAR', 'Label', sub_dir, lidar_file.replace('bin', 'json')), 'w') as f:
