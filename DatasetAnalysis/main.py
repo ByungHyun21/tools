@@ -55,14 +55,14 @@ def analysis(root_path, sensor, purpose):
             analysed_data = analysis_label(os.path.join(root_path, 'Label'))
             print_analysis(analysed_data)
             save_analysis(analysed_data, sensor, purpose, 'Image_Label')
-    # if 'LiDAR' in os.listdir(root_path):
-    #     analysed_data = analysis_lidar(os.path.join(root_path, 'LiDAR'))
-    #     print_analysis(analysed_data)
-    #     save_analysis(analysed_data, sensor, purpose, 'LiDAR')
-    #     if 'Label' in os.listdir(root_path):
-    #         analysed_data = analysis_label(os.path.join(root_path, 'Label'))
-    #         print_analysis(analysed_data)
-    #         save_analysis(analysed_data, sensor, purpose, 'LiDAR_Label')
+    if 'LiDAR' in os.listdir(root_path):
+        analysed_data = analysis_lidar(os.path.join(root_path, 'LiDAR'))
+        print_analysis(analysed_data)
+        save_analysis(analysed_data, sensor, purpose, 'LiDAR')
+        if 'Label' in os.listdir(root_path):
+            analysed_data = analysis_label(os.path.join(root_path, 'Label'))
+            print_analysis(analysed_data)
+            save_analysis(analysed_data, sensor, purpose, 'LiDAR_Label')
     
     pass
 
@@ -128,7 +128,9 @@ def analysis_image(image_path):
 def analysis_lidar(lidar_path):
     print('Analysis LiDAR: ', lidar_path)
     
-    pass
+    output = {}
+    
+    return output
     
 def analysis_label(label_path):
     print('Analysis Label: ', label_path)
@@ -200,9 +202,8 @@ def analysis_label(label_path):
     zdepth_sigma_all = 0
     count = 0
     for key in zdepth:
-        if key == 'Car' or key == 'Pedestrian' or key == 'Cyclist':
-            zdepth_mu_all += sum(zdepth[key])
-            count += len(zdepth[key])
+        zdepth_mu_all += sum(zdepth[key])
+        count += len(zdepth[key])
     zdepth_mu_all /= count
     zdepth_sigma_all = (sum([(z - zdepth_mu_all)**2 for key in zdepth for z in zdepth[key]]) / count)**0.5
         
@@ -246,7 +247,7 @@ def analysis_label(label_path):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='D:/KITTI_Raw', help='dataset path')
+    parser.add_argument('--dataset', type=str, default='D:/AIHUB_cits', help='dataset path')
     args = parser.parse_args()
     
     main(args.dataset)
