@@ -342,7 +342,7 @@ def converting(source_dir, target_dir):
             label['columns'] = ['x', 'y', 'z', 'intensity']
             label['extrinsic'] = {}
             ext_lidar = np.linalg.inv(extrinsic_velo)
-            label['extrinsic']['rotation'] = ext_lidar[:3, :3].tolist()
+            label['extrinsic']['rotation'] = list(ext_lidar[:3, :3].reshape(-1))
             label['extrinsic']['translation'] = {}
             label['extrinsic']['translation']['x'] = ext_lidar[0, 3]
             label['extrinsic']['translation']['y'] = ext_lidar[1, 3]
@@ -365,7 +365,7 @@ def converting(source_dir, target_dir):
                 obj_label['box3d']['size']['width'] = w
                 obj_label['box3d']['size']['length'] = l
                 
-                obj_label['box3d']['rotation'] = ext_obj[:3, :3].tolist()
+                obj_label['box3d']['rotation'] = list(ext_obj[:3, :3].reshape(-1))
                 
                 obj_label['box3d']['translation'] = {}
                 obj_label['box3d']['translation']['x'] = ext_obj[0, 3]

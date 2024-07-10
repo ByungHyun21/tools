@@ -300,7 +300,7 @@ def converting(path_from, path_to, isTrain):
             points = np.array(points, dtype=np.float32)
             points = points.tobytes()
             
-            lidar_save_name = f"{folder_output}_{lidar_f.split('_')[-1]}.bin"
+            lidar_save_name = f"{folder_output}_{lidar_f.split('_')[-1]}"
             with open(path_to + '/LiDAR/LiDAR/' + folder_output + '/' + lidar_save_name.replace('.pcd', '.bin'), 'wb') as f:
                 f.write(points)
                 
@@ -414,7 +414,7 @@ def converting(path_from, path_to, isTrain):
             image_label_json['intrinsic']['cx'] = intrinsic[0, 2]
             image_label_json['intrinsic']['cy'] = intrinsic[1, 2]
             image_label_json['extrinsic'] = {}
-            image_label_json['extrinsic']['rotation'] = extrinsic[:3, :3].reshape(1, 9).tolist()
+            image_label_json['extrinsic']['rotation'] = extrinsic[:3, :3].reshape(1, 9).tolist()[0]
             image_label_json['extrinsic']['translation'] = {}
             image_label_json['extrinsic']['translation']['x'] = extrinsic[0, 3]
             image_label_json['extrinsic']['translation']['y'] = extrinsic[1, 3]
@@ -458,7 +458,7 @@ def converting(path_from, path_to, isTrain):
                 ext_obj = np.vstack([np.hstack([rot, trans]), np.array([0, 0, 0, 1])])
                 ext_obj = extrinsic @ ext_obj
                 
-                obj['box3d']['rotation'] = ext_obj[:3, :3].reshape(1, 9).tolist()
+                obj['box3d']['rotation'] = ext_obj[:3, :3].reshape(1, 9).tolist()[0]
                 obj['box3d']['translation'] = {}
                 obj['box3d']['translation']['x'] = ext_obj[0, 3]
                 obj['box3d']['translation']['y'] = ext_obj[1, 3]
