@@ -15,7 +15,7 @@ pyntcloud
 
 open3d
 
-# convert_kitti_raw.py and 
+# convert_kitti_raw.py 
 
 https://www.cvlibs.net/datasets/kitti/raw_data.php
 

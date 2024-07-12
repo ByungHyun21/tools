@@ -1,0 +1,149 @@
+classes
+  ['car', 'truck', 'van', 'motorcyclist', 'bus', 'trafficcone', 'cyclist', 'tricyclist', 'pedestrian', 'unknown_unmovable', 'barrow', 'unknowns_movable']
+
+box2d
+  car: 73625
+  truck: 3245
+  van: 7346
+  motorcyclist: 17337
+  bus: 2308
+  trafficcone: 146141
+  cyclist: 12834
+  tricyclist: 1815
+  pedestrian: 13319
+  unknown_unmovable: 22783
+  barrow: 117
+  unknowns_movable: 10
+
+box3d
+  car: 73625
+  truck: 3245
+  van: 7346
+  motorcyclist: 17337
+  bus: 2308
+  trafficcone: 146141
+  cyclist: 12834
+  tricyclist: 1815
+  pedestrian: 13319
+  unknown_unmovable: 22783
+  barrow: 117
+  unknowns_movable: 10
+
+zdepth_mu
+  car: 74.6292899713983
+  truck: 97.68321308635527
+  van: 77.18774513560804
+  motorcyclist: 71.20507630708488
+  bus: 79.2232176699856
+  trafficcone: 55.909662039731515
+  cyclist: 71.33982813656576
+  tricyclist: 77.72066245561571
+  pedestrian: 67.0907225576445
+  unknown_unmovable: 48.93207598778556
+  barrow: 54.70696767005299
+  unknowns_movable: 57.90801794235
+
+zdepth_sigma
+  car: 38.637451170567545
+  truck: 50.084425979848966
+  van: 40.66757221446953
+  motorcyclist: 27.076355285600275
+  bus: 46.33824332877698
+  trafficcone: 20.71297175438548
+  cyclist: 22.094768450601332
+  tricyclist: 36.106021709717304
+  pedestrian: 25.168862431377846
+  unknown_unmovable: 17.72085920641711
+  barrow: 21.131890928113947
+  unknowns_movable: 15.469007971981975
+
+zdepth_mu_all
+  63.27647953960282
+
+zdepth_sigma_all
+  29.694589477768762
+
+box3d_width_mu
+  car: 1.297267011952453
+  truck: 2.653864256394459
+  van: 1.7347313898720365
+  motorcyclist: 1.4036847991578683
+  bus: 2.9327531065857926
+  trafficcone: 0.6967211276917531
+  cyclist: 1.3909711060464354
+  tricyclist: 1.51386342093664
+  pedestrian: 1.5957777187476572
+  unknown_unmovable: 0.7172786311723647
+  barrow: 0.8990310598290597
+  unknowns_movable: 0.5573686
+
+box3d_width_sigma
+  car: 0.276029331577241
+  truck: 0.546121882703231
+  van: 0.33719867914666024
+  motorcyclist: 0.17421417904734135
+  bus: 0.46937220239379907
+  trafficcone: 0.1062450048219979
+  cyclist: 0.28854064815401786
+  tricyclist: 0.19403655941976292
+  pedestrian: 0.1574427021666993
+  unknown_unmovable: 0.09245327258614128
+  barrow: 0.18493425766510033
+  unknowns_movable: 0.18739491579613363
+
+box3d_height_mu
+  car: 1.6919387216706392
+  truck: 2.410060420955315
+  van: 1.7787261656683924
+  motorcyclist: 0.5780968609909419
+  bus: 2.5198264350086665
+  trafficcone: 0.25174580835631466
+  cyclist: 0.4956722385070905
+  tricyclist: 1.0261538451790626
+  pedestrian: 0.4723293956753529
+  unknown_unmovable: 1.25176952095861
+  barrow: 0.5282326752136753
+  unknowns_movable: 0.27209239999999996
+
+box3d_height_sigma
+  car: 0.2569333775953829
+  truck: 0.5098462347397648
+  van: 0.2811135452417574
+  motorcyclist: 0.2204961432141481
+  bus: 0.4797172355917504
+  trafficcone: 0.1162547646711253
+  cyclist: 0.21836809222992432
+  tricyclist: 0.2962887797048168
+  pedestrian: 0.1502136248662857
+  unknown_unmovable: 0.7137875122718965
+  barrow: 0.17225230957755117
+  unknowns_movable: 0.20862046227549205
+
+box3d_length_mu
+  car: 4.23650217650252
+  truck: 6.590015743297389
+  van: 4.632160337734813
+  motorcyclist: 1.6393767647805357
+  bus: 10.462904645580595
+  trafficcone: 0.2518953145729129
+  cyclist: 1.49147536068256
+  tricyclist: 2.468149564187333
+  pedestrian: 0.46904200105112953
+  unknown_unmovable: 1.4424566478953667
+  barrow: 0.8470584358974357
+  unknowns_movable: 0.6893980000000001
+
+box3d_length_sigma
+  car: 0.32308468800632045
+  truck: 2.75673455097842
+  van: 0.42933995664456576
+  motorcyclist: 0.3122347867618053
+  bus: 1.7519771796910364
+  trafficcone: 0.1366680300981895
+  cyclist: 0.2997254280013241
+  tricyclist: 0.5145343637333794
+  pedestrian: 0.17904025706348312
+  unknown_unmovable: 0.7544723293107773
+  barrow: 0.3003065000110928
+  unknowns_movable: 0.23341764272865065
+
