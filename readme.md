@@ -19,5 +19,6 @@ Collection of tools for various tasks.
 - [x] DatasetAnalysis
 - [x] DatasetVisualization
 - [x] ExtrinsicCalibration(L-C)
+- [x] Generator_2DBox
 - [ ] IntrinsicCalibration
 - [ ] Labeling
