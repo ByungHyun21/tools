@@ -16,3 +16,13 @@ root_dir
 
 ## Result
 
+![image1](image1.jpg)
+
+Z < 0 and projected other side of the image
+
+![image2](image2.jpg)
+
+![image4](image4.jpg)
+
+![image5](image5.jpg)
+

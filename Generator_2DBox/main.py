@@ -15,7 +15,9 @@ def generator(root_dir):
     for sub_dir in sub_dirs:
         image_files = os.listdir(os.path.join(root_dir, sub_dir))
         
-        for image_file in image_files:
+        cnt = 0
+        while True:
+            image_file = image_files[cnt]
             image = cv2.imread(os.path.join(root_dir, sub_dir, image_file))
             label_file = image_file.split('.')[0] + '.json'
             with open(os.path.join(root_dir.replace('Image', 'Label'), sub_dir, label_file)) as f:
@@ -31,11 +33,9 @@ def generator(root_dir):
             cy = label['intrinsic']['cy']
             intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
                 
-            edges_front = [
+            edges = [
                 [0, 1], [1, 2], [2, 3], [3, 0],
-                [4, 5], [5, 6], [6, 7], [7, 4]
-            ]    
-            edges_side = [
+                [4, 5], [5, 6], [6, 7], [7, 4],
                 [0, 4], [1, 5], [2, 6], [3, 7]
             ]
             
@@ -72,46 +72,285 @@ def generator(root_dir):
                 
                 # bool idx that projected in image
                 idx = (vertices_2d[0] > 0) & (vertices_2d[0] < imw) & (vertices_2d[1] > 0) & (vertices_2d[1] < imh)
-                
-                xmin = imw
-                ymin = imh
-                xmax = 0
-                ymax = 0
-                
                 if sum(idx) == 0:
                     continue
                 
+                # at least one point is in the front of the image
+                zidx = vertices[2] > 0
+                if sum(zidx) == 0:
+                    continue
+                
+                # if projected in image
+                xmin, ymin, xmax, ymax = imw, imh, 0, 0
                 for i in range(8):
                     if idx[i]:
                         xmin = min(xmin, vertices_2d[0, i])
                         ymin = min(ymin, vertices_2d[1, i])
                         xmax = max(xmax, vertices_2d[0, i])
                         ymax = max(ymax, vertices_2d[1, i])
-                    else:
-                        if (vertices_2d[0, i] > 0) & (vertices_2d[0, i] < imw):
-                            if vertices[1, i] > 0:
-                                ymax = imh
-                            if vertices[1, i] < 0:
-                                ymin = 0
-                                
-                        if (vertices_2d[1, i] > 0) & (vertices_2d[1, i] < imh):
-                            if vertices[0, i] > 0:
-                                xmax = imw
-                            if vertices[0, i] < 0:
-                                xmin = 0
                 
-                for edge in edges_side:
+                # line: y = ax + b
+                
+                for edge in edges:
+                    p1 = edge[0]
+                    p2 = edge[1]
+                    
+                    if idx[p1] and not idx[p2]:
+                        a = (vertices_2d[1, p2] - vertices_2d[1, p1]) / (vertices_2d[0, p2] - vertices_2d[0, p1])
+                        b = vertices_2d[1, p1] - a * vertices_2d[0, p1]
+                        
+                        # left (x < 0)
+                        if vertices[0, p2] < 0 and (vertices_2d[1, p2] > 0 and vertices_2d[1, p2] < imh):
+                            x = 0
+                            y = a * x + b
+                            if y > 0 and y < imh:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                                
+                        # right (x > 0)
+                        if vertices[0, p2] > 0 and (vertices_2d[1, p2] > 0 and vertices_2d[1, p2] < imh):
+                            x = imw
+                            y = a * x + b
+                            if y > 0 and y < imh:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                            
+                        # top (y < 0)
+                        if vertices[1, p2] < 0 and (vertices_2d[0, p2] > 0 and vertices_2d[0, p2] < imw):
+                            y = 0
+                            x = (y - b) / a
+                            if x > 0 and x < imw:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                                
+                        # bottom (y > 0)
+                        if vertices[1, p2] > 0 and (vertices_2d[0, p2] > 0 and vertices_2d[0, p2] < imw):
+                            y = imh
+                            x = (y - b) / a
+                            if x > 0 and x < imw:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                                
+                        # left and top (x < 0, y < 0)
+                        if vertices[0, p2] < 0 and vertices[1, p2] < 0 and (vertices_2d[0, p2] < 0 and vertices_2d[1, p2] < 0):
+                            x1 = 0
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = 0
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                        
+                        # right and top (x > 0, y < 0)
+                        if vertices[0, p2] > 0 and vertices[1, p2] < 0 and (vertices_2d[0, p2] > imw and vertices_2d[1, p2] < 0):
+                            x1 = imw
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = 0
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                                
+                        # right and bottom (x > 0, y > 0)
+                        if vertices[0, p2] > 0 and vertices[1, p2] > 0 and (vertices_2d[0, p2] > imw and vertices_2d[1, p2] > imh):
+                            x1 = imw
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = imh
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                                
+                        # left and bottom (x < 0, y > 0)
+                        if vertices[0, p2] < 0 and vertices[1, p2] > 0 and (vertices_2d[0, p2] < 0 and vertices_2d[1, p2] > imh):
+                            x1 = 0
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = imh
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                            
+                    if idx[p2] and not idx[p1]:
+                        a = (vertices_2d[1, p1] - vertices_2d[1, p2]) / (vertices_2d[0, p1] - vertices_2d[0, p2])
+                        b = vertices_2d[1, p1] - a * vertices_2d[0, p1]
+                        
+                        # left (x < 0)
+                        if vertices[0, p1] < 0 and (vertices_2d[1, p1] > 0 and vertices_2d[1, p1] < imh):
+                            x = 0
+                            y = a * x + b
+                            if y > 0 and y < imh:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                                
+                        # right (x > 0)
+                        if vertices[0, p1] > 0 and (vertices_2d[1, p1] > 0 and vertices_2d[1, p1] < imh):
+                            x = imw
+                            y = a * x + b
+                            if y > 0 and y < imh:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                            
+                        # top (y < 0)
+                        if vertices[1, p1] < 0 and (vertices_2d[0, p1] > 0 and vertices_2d[0, p1] < imw):
+                            y = 0
+                            x = (y - b) / a
+                            if x > 0 and x < imw:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)
+                                
+                        # bottom (y > 0)
+                        if vertices[1, p1] > 0 and (vertices_2d[0, p1] > 0 and vertices_2d[0, p1] < imw):
+                            y = imh
+                            x = (y - b) / a
+                            if x > 0 and x < imw:
+                                xmin = min(xmin, x)
+                                ymin = min(ymin, y)
+                                xmax = max(xmax, x)
+                                ymax = max(ymax, y)   
+                                
+                        # left and top (x < 0, y < 0)
+                        if vertices[0, p1] < 0 and vertices[1, p1] < 0 and (vertices_2d[0, p1] < 0 and vertices_2d[1, p1] < 0):
+                            x1 = 0
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = 0
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                                
+                        # right and top (x > 0, y < 0)
+                        if vertices[0, p1] > 0 and vertices[1, p1] < 0 and (vertices_2d[0, p1] > imw and vertices_2d[1, p1] < 0):
+                            x1 = imw
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = 0
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                                
+                        # right and bottom (x > 0, y > 0)
+                        if vertices[0, p1] > 0 and vertices[1, p1] > 0 and (vertices_2d[0, p1] > imw and vertices_2d[1, p1] > imh):
+                            x1 = imw
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = imh
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                                
+                        # left and bottom (x < 0, y > 0)
+                        if vertices[0, p1] < 0 and vertices[1, p1] > 0 and (vertices_2d[0, p1] < 0 and vertices_2d[1, p1] > imh):
+                            x1 = 0
+                            y1 = a * x1 + b
+                            
+                            if y1 > 0 and y1 < imh:
+                                xmin = min(xmin, x1)
+                                ymin = min(ymin, y1)
+                                xmax = max(xmax, x1)
+                                ymax = max(ymax, y1)
+                            
+                            y2 = imh
+                            x2 = (y2 - b) / a
+                            
+                            if x2 > 0 and x2 < imw:
+                                xmin = min(xmin, x2)
+                                ymin = min(ymin, y2)
+                                xmax = max(xmax, x2)
+                                ymax = max(ymax, y2)
+                    
+                    
+                
+                for edge in edges:
                     x1 = int(vertices_2d[0, edge[0]])
                     y1 = int(vertices_2d[1, edge[0]])
                     x2 = int(vertices_2d[0, edge[1]])
                     y2 = int(vertices_2d[1, edge[1]])
                     cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                for edge in edges_front:
-                    x1 = int(vertices_2d[0, edge[0]])
-                    y1 = int(vertices_2d[1, edge[0]])
-                    x2 = int(vertices_2d[0, edge[1]])
-                    y2 = int(vertices_2d[1, edge[1]])
-                    cv2.line(image, (x1, y1), (x2, y2), (255, 0, 0), 2)
                 
                 cv2.rectangle(image, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255), 2)
                 
@@ -120,7 +359,19 @@ def generator(root_dir):
                     
             image = cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
             cv2.imshow('image', image)
-            cv2.waitKey(0)
+            key = cv2.waitKey(0)
+            if key == ord('q'):
+                cnt = max(cnt-1, 0)
+            elif key == ord('e'):
+                cnt = min(cnt+1, len(image_files))
+            elif key == ord('s'):
+                cv2.imwrite(f"{cnt}.jpg", image)
+            else:
+                pass
+            
+            if cnt == len(image_files):
+                break
+            
 
 if __name__ == "__main__":
     import argparse
