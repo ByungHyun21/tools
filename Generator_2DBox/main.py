@@ -12,6 +12,10 @@ def main(root_dir):
 
 def generator(root_dir):
     sub_dirs = os.listdir(root_dir)
+    
+    # suffle sub_dirs
+    np.random.shuffle(sub_dirs)
+    
     for sub_dir in sub_dirs:
         image_files = os.listdir(os.path.join(root_dir, sub_dir))
         
@@ -44,6 +48,8 @@ def generator(root_dir):
                     continue
                 if 'box3d' not in obj:
                     continue
+                
+                objClass = obj['class']
                 
                 box3d = obj['box3d']
                 
@@ -353,6 +359,8 @@ def generator(root_dir):
                     cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 
                 cv2.rectangle(image, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255), 2)
+                
+                # cv2.putText(image, objClass, (int(xmin), int(ymin)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 
                 pass
                 

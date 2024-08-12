@@ -142,15 +142,33 @@ def parsing(source_dir, target_dir, file_list_txt):
         ty = 0
         tz = 0
         
-        cam_rot = np.array([[1 - 2*qy**2 - 2*qz**2, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
-                            [2*qx*qy + 2*qz*qw, 1 - 2*qx**2 - 2*qz**2, 2*qy*qz - 2*qx*qw],
-                            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx**2 - 2*qy**2]])
+        # cam_rot = np.array([[1 - 2*qy**2 - 2*qz**2, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+        #                     [2*qx*qy + 2*qz*qw, 1 - 2*qx**2 - 2*qz**2, 2*qy*qz - 2*qx*qw],
+        #                     [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx**2 - 2*qy**2]])
         cam_trans = np.array([[tx], [ty], [tz]])
         
         # Load Denorm
         with open(denorm_file_path, 'r') as f:
             denorm = f.readlines()[0].split(' ')
         denorm = [float(x) for x in denorm]
+        
+        theta = np.arctan2(denorm[2], denorm[1])
+        sin = np.sin(theta)
+        cos = np.cos(theta)
+        
+        cam_rot = np.array([
+            [1, 0, 0],
+            [0, cos, -sin],
+            [0, sin, cos]
+        ])
+        
+        l2c = np.array([
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, -1, 0]
+        ])
+        
+        cam_rot = cam_rot @ l2c
         
         
         # Load Image
@@ -231,11 +249,11 @@ def parsing(source_dir, target_dir, file_list_txt):
         with open(os.path.join(label_subfolder_path, f"{file_name_save}.json"), 'w') as f:
             json.dump(camera_label_dict, f, indent=4)
 
-if __name__ is "__main__":
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Process directories.")
     parser.add_argument('--source_root_dir', type=str, required=False, help='Path to the source root directory', default='D:\Rope3D_data')
-    parser.add_argument('--output_root_dir', type=str, required=False, help='Path to the output root directory', default='D:\Rope3D_Ours')
+    parser.add_argument('--output_root_dir', type=str, required=False, help='Path to the output root directory', default='D:\Rope3D_cits')
 
     args = parser.parse_args()
 
