@@ -4,8 +4,11 @@
 
 Generate 2D Box from 3D Box
 
+main.py -> Using projected 8 points
+main2.py -> Using 3D Box Rasterization
+
 ```python
-python convert_kitti_raw.py --root_dir "path/to/dataset"
+python main.py --root_dir "path/to/dataset"
 ```
 
 ```
@@ -14,7 +17,7 @@ root_dir
 ├── Valid
 ```
 
-## Result
+## Result (main.py)
 
 ![image1](image1.jpg)
 
@@ -26,3 +29,6 @@ Z < 0 and projected other side of the image
 
 ![image5](image5.jpg)
 
+## Result (main2.py)
+
+![image1](image1_main2.jpg)
