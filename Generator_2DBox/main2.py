@@ -3,12 +3,13 @@ import cv2
 import json
 import numpy as np
 import copy
+import time
 
 # 0: 전방 우하단, 1: 전방 우상단, 2: 전방 좌상단, 3: 전방 좌하단
 # 4: 후방 우하단, 5: 후방 우상단, 6: 후방 좌상단, 7: 후방 좌하단
 
 def main(root_dir):
-    for purpose in ['Train', 'Valid']:
+    for purpose in ['Train']:
         sensors = os.listdir(os.path.join(root_dir, purpose))    
         for sensor in sensors:
             if 'Image' in os.listdir(os.path.join(root_dir, purpose, sensor)):
@@ -16,9 +17,7 @@ def main(root_dir):
 
 def generator(root_dir):
     sub_dirs = os.listdir(root_dir)
-    
-    # suffle sub_dirs
-    # np.random.shuffle(sub_dirs)
+    sub_dirs.sort()
     
     triangles = np.array([
         [0, 1, 2], [0, 2, 3],
@@ -31,7 +30,9 @@ def generator(root_dir):
     
     for sub_dir in sub_dirs:
         image_files = os.listdir(os.path.join(root_dir, sub_dir))
+        image_files.sort()
         
+        st = time.time()
         cnt = 0
         while True:
             print(f"{sub_dir} - {cnt}/{len(image_files)}")
@@ -50,6 +51,9 @@ def generator(root_dir):
             cx = label['intrinsic']['cx']
             cy = label['intrinsic']['cy']
             intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+            
+            vertices3d = []
+            n_obj = len(label['objects'])
             
             for obj in label['objects']:
                 # if 'box2d' in obj:
@@ -77,30 +81,31 @@ def generator(root_dir):
                 obj_ext = np.vstack([np.hstack([obj_rotation, obj_translation]), np.array([0, 0, 0, 1])])
                 
                 vertices = obj_ext @ np.vstack([vertices, np.ones(8)])
-                vertices_2d = intrinsic @ vertices[:3, :]
                 
-                vertices_2d = vertices_2d[:2, :] / vertices_2d[2, :]
-                
-                # 2D Bounding Box Generation from 3D Bounding Box
-                imh, imw = image.shape[:2]
-                
-                #####################################################
-                # find intersections between 3D bounding box and image plane in 1/4 image
-                imh4, imw4 = imh//4, imw//4
-                intrinsic4 = copy.deepcopy(intrinsic)
-                intrinsic4[:2, :] = intrinsic4[:2, :] / 4
-                
-                canvas4 = np.zeros((imh4, imw4, 3), dtype=np.uint8)
-                
-                for u in range(0, imw4):
-                    for v in range(0, imh4):
-                        ray4 = np.linalg.inv(intrinsic4) @ np.array([u, v, 1])
-                        ray4 = ray4 / np.linalg.norm(ray4)
-                        
+                vertices3d.append(vertices)
+            
+            # 2D Bounding Box Generation from 3D Bounding Box
+            imh, imw = image.shape[:2]
+            
+            #####################################################
+            # find intersections between 3D bounding box and image plane in 1/4 image
+            imh4, imw4 = imh//20, imw//20
+            intrinsic4 = copy.deepcopy(intrinsic)
+            intrinsic4[:2, :] = intrinsic4[:2, :] / 20
+            
+            canvas4 = np.zeros((n_obj, imh4, imw4, 3), dtype=np.uint8)
+            
+            object_inside = [False] * n_obj
+            for u in range(0, imw4):
+                for v in range(0, imh4):
+                    ray4 = np.linalg.inv(intrinsic4) @ np.array([u, v, 1])
+                    ray4 = ray4 / np.linalg.norm(ray4)
+                    
+                    for oidx, p3d in enumerate(vertices3d):
                         for triangle in triangles:
-                            A = vertices[:3, triangle[0]]
-                            B = vertices[:3, triangle[1]]
-                            C = vertices[:3, triangle[2]]
+                            A = p3d[:3, triangle[0]]
+                            B = p3d[:3, triangle[1]]
+                            C = p3d[:3, triangle[2]]
                             
                             AB = B - A
                             BC = C - B
@@ -113,6 +118,9 @@ def generator(root_dir):
                             # p = t * ray (from (0, 0, 0))
                             t = -d / np.dot(plane_normal, ray4)
                             p = t * ray4
+                            
+                            if t < 0:
+                                continue
                             
                             pA = A - p
                             pB = B - p
@@ -127,33 +135,34 @@ def generator(root_dir):
                             b2 = True if np.dot(plane_normal, cC) > 0 else False
                             
                             if (b0 == b1) and (b1 == b2):
-                                canvas4[v, u] = 1
+                                canvas4[oidx, v, u] = 1
+                                object_inside[oidx] = True
                                 break
-                            
+            
+            if not object_inside:
+                continue
+            
+            for oidx, inside in enumerate(object_inside):
+                if not inside:
+                    continue
+                
                 # 2D Bounding Box Generation
-                canvas4 = cv2.cvtColor(canvas4, cv2.COLOR_BGR2GRAY)
-                _, canvas4 = cv2.threshold(canvas4, 0, 255, cv2.THRESH_BINARY)
-                contours, _ = cv2.findContours(canvas4, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                temp = cv2.cvtColor(canvas4[oidx], cv2.COLOR_BGR2GRAY)
+                _, temp = cv2.threshold(temp, 0, 255, cv2.THRESH_BINARY)
+                contours, _ = cv2.findContours(temp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 x, y, w, h = cv2.boundingRect(contours[0])
                 
-                #####################################################
-                # all image pixels intersection with 3D bounding box? (Check)
-                # if intersection, canvas pixel = 1
-                # if not, canvas pixel = 0
-                # using canvas, generate 2D bounding box (min, max)
-                canvas = cv2.resize(canvas4, (imw, imh))
-                canvas[canvas > 0] = 1
+                x1 = max(0, x*20)
+                y1 = max(0, y*20)
+                x2 = min(imw, (x+w)*20)
+                y2 = min(imh, (y+h)*20)
                 
-                x1 = max(0, x*4)
-                y1 = max(0, y*4)
-                x2 = min(imw, (x+w)*4)
-                y2 = min(imh, (y+h)*4)
+                x1 = max(0, x1-20)
+                x2 = min(imw, x2+20)
+                y1 = max(0, y1-20)
+                y2 = min(imh, y2+20)
                 
-                x1 = max(0, x1-10)
-                x2 = min(imw, x2+10)
-                y1 = max(0, y1-10)
-                y2 = min(imh, y2+10)
-                
+                canvas = np.zeros((imh, imw), dtype=np.uint8)
                 for u in range(x1, x2):
                     for v in range(y1, y2):
                         if canvas[v, u] == 1:
@@ -163,9 +172,9 @@ def generator(root_dir):
                         ray = ray / np.linalg.norm(ray)
                         
                         for triangle in triangles:
-                            A = vertices[:3, triangle[0]]
-                            B = vertices[:3, triangle[1]]
-                            C = vertices[:3, triangle[2]]
+                            A = vertices3d[oidx][:3, triangle[0]]
+                            B = vertices3d[oidx][:3, triangle[1]]
+                            C = vertices3d[oidx][:3, triangle[2]]
                             
                             AB = B - A
                             BC = C - B
@@ -178,6 +187,9 @@ def generator(root_dir):
                             # p = t * ray (from (0, 0, 0))
                             t = -d / np.dot(plane_normal, ray)
                             p = t * ray
+                            
+                            if t < 0:
+                                continue
                             
                             pA = A - p
                             pB = B - p
@@ -211,13 +223,15 @@ def generator(root_dir):
                 w = w / imw
                 h = h / imh
                 
-                obj['box2d'] = {}
-                box2d = obj['box2d']
+                label['objects'][oidx]['box2d'] = {}
+                box2d = label['objects'][oidx]['box2d']
                 box2d['cx'] = cx
                 box2d['cy'] = cy
                 box2d['w'] = w
                 box2d['h'] = h
                 
+            et = time.time()
+            print(f"Time: {et - st}")
             image = cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
             cv2.imshow('image', image)
             
